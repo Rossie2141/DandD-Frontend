@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, CircularProgress } from '@mui/material';
 
 export default function LoadingFallback() {
@@ -6,13 +5,13 @@ export default function LoadingFallback() {
     <Box
       sx={{
         minHeight: '100vh',
-        backgroundColor: '#031427',
+        backgroundColor: 'white',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <CircularProgress sx={{ color: '#4f46e5' }} size={40} />
+      <CircularProgress sx={{ color: 'black' }} size={40} />
     </Box>
   );
 }

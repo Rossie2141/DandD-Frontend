@@ -1,11 +1,7 @@
-import React from 'react';
-import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Box, Link } from '@mui/material';
+import { Outlet } from 'react-router-dom';
+import { Box } from '@mui/material';
 
 export default function AuthLayout() {
-  const location = useLocation();
-  const isLoginPage = location.pathname === '/login';
-
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#031427' }}>
       
