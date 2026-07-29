@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+/* 
+  Revert aggressive global CSS resets from Tailwind preflight for form elements.
+  This allows standard inputs, textareas, and selects to have their default browser 
+  styles (borders, backgrounds, text colors) so they remain visible on all themes, 
+  unless explicitly overridden by your custom CSS.
+*/
+input, textarea, select {
+  background-color: revert;
+  color: revert;
+  border: revert;
+  padding: revert;
+  border-radius: revert;
+}
+
+/* For better cross-browser defaults if revert doesn't work perfectly */
+input:not([type="checkbox"]):not([type="radio"]:not([type="range"])), textarea, select {
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #ccc;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}

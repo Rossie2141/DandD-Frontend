@@ -1,29 +1,41 @@
 import { lazy, Suspense } from 'react';
-import { RouterProvider, createBrowserRouter, Navigate } from 'react-router';
+import { RouterProvider, createBrowserRouter, Navigate, Outlet } from 'react-router';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 
 import MainLayout from './layouts/MainLayout';
 import LoadingFallback from './components/LoadingFallback';
-
 import AuthCallback from './pages/AuthCallback';
 
-
-const darkTheme = createTheme({
+const appTheme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
   },
 });
 
-
-// Lazy components
+// Lazy loaded components
 const Login = lazy(() => import('./features/auth/Login'));
 const SignUpForm = lazy(() => import('./features/auth/Signup'));
 const Home = lazy(() => import('./pages/Home'));
+const Problems = lazy(() => import('./pages/ProblemPage'));
 
+const ProtectedRoute = () => {
+  // Check common keys where tokens or user sessions are stored
+  const token = 
+    localStorage.getItem('token') || 
+    localStorage.getItem('accessToken') || 
+    localStorage.getItem('user');
 
+  console.log('Protected Route Check Token:', token); // Temporary debug log
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
+};
 
 const router = createBrowserRouter([
-
+  // Public Auth Routes
   {
     path: '/login',
     element: (
@@ -32,8 +44,6 @@ const router = createBrowserRouter([
       </Suspense>
     ),
   },
-
-
   {
     path: '/signup',
     element: (
@@ -42,29 +52,20 @@ const router = createBrowserRouter([
       </Suspense>
     ),
   },
-
-
-  // OAuth callback
   {
     path: '/auth/callback',
-    element: (
-      <AuthCallback />
-    ),
+    element: <AuthCallback />,
   },
 
-
+  // Routes inside MainLayout (Header + Footer)
   {
     path: '/',
     element: <MainLayout />,
-
     children: [
-
       {
         index: true,
         element: <Navigate to="/home" replace />,
       },
-
-
       {
         path: 'home',
         element: (
@@ -73,32 +74,35 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
-
+      // Protected Routes requiring Login
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: 'problems',
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <Problems />
+              </Suspense>
+            ),
+          },
+        ],
+      },
     ],
   },
 
-
+  // Fallback Catch-all
   {
     path: '*',
     element: <Navigate to="/login" replace />,
   },
-
 ]);
 
-
-
-export default function App(){
-
+export default function App() {
   return (
-
-    <ThemeProvider theme={darkTheme}>
-
+    <ThemeProvider theme={appTheme}>
       <CssBaseline />
-
-      <RouterProvider router={router}/>
-
+      <RouterProvider router={router} />
     </ThemeProvider>
-
   );
-
 }
