@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 
 // 1. MUI Core Components
 import {
@@ -36,7 +36,7 @@ import {
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 
-// Default boilerplates per language
+// Fallback boilerplates per language
 const STARTER_CODE = {
   python: `def twoSum(nums: list[int], target: int) -> list[int]:
     hashmap = {}
@@ -86,6 +86,7 @@ public:
 
 export default function ProblemSolver() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [language, setLanguage] = useState('python');
   const [code, setCode] = useState(STARTER_CODE.python);
   const [leftTab, setLeftTab] = useState(0); // 0: Description, 1: Submissions
@@ -102,13 +103,53 @@ export default function ProblemSolver() {
     { id: 2, status: 'Wrong Answer', lang: 'C++', runtime: 'N/A', memory: 'N/A', time: '1 hour ago' }
   ]);
 
+  // Problem data fetched from backend
+  const [problem, setProblem] = useState(null);
+  const [loadingProblem, setLoadingProblem] = useState(true);
+  const [problemError, setProblemError] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('problemId');
+    if (!id) {
+      setLoadingProblem(false);
+      setProblemError('Problem id not provided in query.');
+      return;
+    }
+
+    setLoadingProblem(true);
+    setProblemError(null);
+
+    fetch(`http://localhost:8000/api/v1/problems/${id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setProblem(data);
+        if (data?.starter_code) {
+          setCode(data.starter_code);
+        } else {
+          setCode(STARTER_CODE[language] || '');
+        }
+      })
+      .catch((err) => {
+        setProblemError(err.message || 'Failed to load problem');
+      })
+      .finally(() => setLoadingProblem(false));
+  }, [location.search]);
+
   const handleLanguageChange = (e) => {
     const newLang = e.target.value;
     setLanguage(newLang);
-    setCode(STARTER_CODE[newLang] || '');
+    
+    if (newLang === 'python' && problem?.starter_code) {
+      setCode(problem.starter_code);
+    } else {
+      setCode(STARTER_CODE[newLang] || '');
+    }
   };
 
-  // Step: Run Code -> View Output
   const handleRunCode = () => {
     setIsRunning(true);
     setBottomTab(1);
@@ -120,20 +161,18 @@ export default function ProblemSolver() {
         status: 'Finished',
         stdout: '[0, 1]',
         expected: '[0, 1]',
-        input: 'nums = [2,7,11,15], target = 9',
+        input: problem?.examples?.[0]?.input || 'nums = [2,7,11,15], target = 9',
         runtime: '45 ms'
       });
     }, 1200);
   };
 
-  // Step: Submit Solution -> Judge Execution -> Save Result / Failed Testcases -> Submission History
   const handleSubmit = () => {
     setIsSubmitting(true);
     setBottomTab(1);
 
     setTimeout(() => {
       setIsSubmitting(false);
-      
       const isAccepted = true; 
       const newStatus = isAccepted ? 'Accepted' : 'Wrong Answer';
 
@@ -165,23 +204,35 @@ export default function ProblemSolver() {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#f8fafc', color: '#0f172a' }}>
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: { xs: 'auto', md: '100vh' }, 
+        minHeight: '100vh', 
+        backgroundColor: '#f8fafc', 
+        color: '#0f172a' 
+      }}
+    >
       
       {/* Top Navbar */}
       <Paper
         elevation={0}
         sx={{
-          height: 52,
-          px: 2.5,
+          minHeight: 52,
+          py: { xs: 1, md: 0 },
+          px: { xs: 1.5, md: 2.5 },
           backgroundColor: '#ffffff',
           borderBottom: '1px solid #e2e8f0',
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
           justifyContent: 'space-between',
+          gap: { xs: 1, sm: 0 },
           borderRadius: 0,
         }}
       >
-        <Stack direction="row" spacing={2} alignItems="center">
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap' }}>
           <Button
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/dashboard')}
@@ -195,26 +246,42 @@ export default function ProblemSolver() {
           >
             Dashboard
           </Button>
-          <Divider orientation="vertical" flexItem sx={{ my: 1.5, borderColor: '#e2e8f0' }} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#0f172a', fontSize: '0.95rem' }}>
-            1. Two Sum
-          </Typography>
-          <Chip
-            label="Easy"
-            size="small"
-            sx={{
-              height: 22,
-              fontWeight: 600,
-              fontSize: '0.75rem',
-              color: '#16a34a',
-              backgroundColor: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-            }}
-          />
+          <Divider orientation="vertical" flexItem sx={{ my: 1.5, borderColor: '#e2e8f0', display: { xs: 'none', sm: 'block' } }} />
+
+          {loadingProblem ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={18} sx={{ color: '#0f172a' }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#0f172a', fontSize: '0.95rem' }}>
+                Loading problem...
+              </Typography>
+            </Box>
+          ) : problemError ? (
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#ef4444', fontSize: '0.95rem' }}>
+              Error loading problem
+            </Typography>
+          ) : (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#0f172a', fontSize: '0.95rem' }}>
+                {problem?.id}. {problem?.title}
+              </Typography>
+              <Chip
+                label={problem?.difficulty || '—'}
+                size="small"
+                sx={{
+                  height: 22,
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                  color: problem?.difficulty === 'Easy' ? '#16a34a' : '#0f172a',
+                  backgroundColor: problem?.difficulty === 'Easy' ? '#f0fdf4' : '#f3f4f6',
+                  border: problem?.difficulty === 'Easy' ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                }}
+              />
+            </Stack>
+          )}
         </Stack>
 
         {/* Action Controls */}
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ alignSelf: { xs: 'flex-end', sm: 'auto' } }}>
           <Button
             variant="outlined"
             startIcon={isRunning ? <CircularProgress size={16} color="inherit" /> : <PlayArrow sx={{ fontSize: '18px !important' }} />}
@@ -258,13 +325,24 @@ export default function ProblemSolver() {
       </Paper>
 
       {/* Main Split Body */}
-      <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden', p: 1, gap: 1 }}>
+      <Box 
+        sx={{ 
+          flexGrow: 1, 
+          display: 'flex', 
+          flexDirection: { xs: 'column', md: 'row' }, 
+          overflow: { xs: 'visible', md: 'hidden' }, 
+          p: 1, 
+          gap: 1 
+        }}
+      >
         
         {/* LEFT PANEL: Problem Details / Submission History */}
         <Paper
           elevation={0}
           sx={{
-            width: '45%',
+            width: { xs: '100%', md: '45%' },
+            height: { xs: 'auto', md: '100%' },
+            maxHeight: { xs: '500px', md: 'none' },
             display: 'flex',
             flexDirection: 'column',
             backgroundColor: '#ffffff',
@@ -295,77 +373,58 @@ export default function ProblemSolver() {
             <Tab icon={<History sx={{ fontSize: 16 }} />} iconPosition="start" label="Submissions" />
           </Tabs>
 
-          <Box sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
+          <Box sx={{ flexGrow: 1, p: { xs: 2, sm: 3 }, overflowY: 'auto' }}>
             {leftTab === 0 && (
               <Stack spacing={2.5}>
                 <Typography variant="h5" sx={{ fontWeight: 600, color: '#0f172a', fontSize: '1.25rem' }}>
-                  Two Sum
+                  {problem?.title || 'Problem Description'}
                 </Typography>
 
                 <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.7, fontSize: '0.875rem' }}>
-                  Given an array of integers <code>nums</code> and an integer <code>target</code>, return <i>indices of the two numbers such that they add up to <code>target</code></i>.
-                  <br /><br />
-                  You may assume that each input would have <b>exactly one solution</b>, and you may not use the same element twice. You can return the answer in any order.
+                  {problem?.description}
                 </Typography>
 
                 <Divider sx={{ borderColor: '#f1f5f9' }} />
 
-                {/* Test Examples */}
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#0f172a', fontSize: '0.875rem' }}>
-                    Example 1:
-                  </Typography>
-                  <Box
-                    sx={{
-                      p: 2,
-                      backgroundColor: '#f8fafc',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      fontFamily: 'monospace',
-                      fontSize: '0.8125rem',
-                      color: '#1e293b',
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    <div><b>Input:</b> nums = [2,7,11,15], target = 9</div>
-                    <div><b>Output:</b> [0,1]</div>
-                    <div><b>Explanation:</b> Because nums[0] + nums[1] == 9, we return [0, 1].</div>
+                {/* Examples */}
+                {problem?.examples?.map((ex, idx) => (
+                  <Box key={idx}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#0f172a', fontSize: '0.875rem' }}>
+                      Example {idx + 1}:
+                    </Typography>
+                    <Box
+                      sx={{
+                        p: 2,
+                        backgroundColor: '#f8fafc',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                        fontFamily: 'monospace',
+                        fontSize: '0.8125rem',
+                        color: '#1e293b',
+                        lineHeight: 1.6,
+                        overflowX: 'auto',
+                      }}
+                    >
+                      <div><b>Input:</b> {ex.input}</div>
+                      <div><b>Output:</b> {ex.output}</div>
+                      {ex.explanation && <div><b>Explanation:</b> {ex.explanation}</div>}
+                    </Box>
                   </Box>
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#0f172a', fontSize: '0.875rem' }}>
-                    Example 2:
-                  </Typography>
-                  <Box
-                    sx={{
-                      p: 2,
-                      backgroundColor: '#f8fafc',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      fontFamily: 'monospace',
-                      fontSize: '0.8125rem',
-                      color: '#1e293b',
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    <div><b>Input:</b> nums = [3,2,4], target = 6</div>
-                    <div><b>Output:</b> [1,2]</div>
-                  </Box>
-                </Box>
+                ))}
 
                 {/* Constraints */}
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#0f172a', fontSize: '0.875rem' }}>
-                    Constraints:
-                  </Typography>
-                  <Box component="ul" sx={{ pl: 2.5, color: '#475569', fontSize: '0.8125rem', lineHeight: 1.8 }}>
-                    <li><code>2 &lt;= nums.length &lt;= 10⁴</code></li>
-                    <li><code>-10⁹ &lt;= nums[i] &lt;= 10⁹</code></li>
-                    <li><code>-10⁹ &lt;= target &lt;= 10⁹</code></li>
-                    <li><b>Only one valid answer exists.</b></li>
+                {problem?.constraints && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#0f172a', fontSize: '0.875rem' }}>
+                      Constraints:
+                    </Typography>
+                    <Box component="ul" sx={{ pl: 2.5, color: '#475569', fontSize: '0.8125rem', lineHeight: 1.8 }}>
+                      {problem.constraints.split('\n').map((line, idx) => (
+                        <li key={idx}><code>{line}</code></li>
+                      ))}
+                    </Box>
                   </Box>
-                </Box>
+                )}
               </Stack>
             )}
 
@@ -375,7 +434,7 @@ export default function ProblemSolver() {
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: '#0f172a', fontSize: '0.95rem' }}>
                   Submission History
                 </Typography>
-                <TableContainer component={Paper} elevation={0} sx={{ backgroundColor: 'transparent', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                <TableContainer component={Paper} elevation={0} sx={{ backgroundColor: 'transparent', border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto' }}>
                   <Table size="small">
                     <TableHead sx={{ backgroundColor: '#f8fafc' }}>
                       <TableRow>
@@ -423,13 +482,22 @@ export default function ProblemSolver() {
         </Paper>
 
         {/* RIGHT PANEL: Code Editor & Console Drawer */}
-        <Box sx={{ width: '55%', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box 
+          sx={{ 
+            width: { xs: '100%', md: '55%' }, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 1, 
+            height: { xs: 'auto', md: '100%' } 
+          }}
+        >
           
           {/* Top Code Editor Container */}
           <Paper
             elevation={0}
             sx={{
               flexGrow: 1,
+              minHeight: { xs: '350px', md: 0 },
               display: 'flex',
               flexDirection: 'column',
               backgroundColor: '#ffffff',
@@ -500,6 +568,7 @@ export default function ProblemSolver() {
             elevation={0}
             sx={{
               height: 220,
+              minHeight: 220,
               backgroundColor: '#ffffff',
               border: '1px solid #e2e8f0',
               borderRadius: '12px',
@@ -532,16 +601,14 @@ export default function ProblemSolver() {
 
             <Box sx={{ p: 2, flexGrow: 1, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.8125rem' }}>
               
-              {/* Testcases Input Tab */}
+              {/* Dynamic Testcase View */}
               {bottomTab === 0 && (
                 <Box>
                   <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 1, fontFamily: 'sans-serif', fontWeight: 500 }}>
                     Input Parameters:
                   </Typography>
-                  <Box sx={{ p: 1.5, backgroundColor: '#f8fafc', borderRadius: '6px', color: '#0f172a', border: '1px solid #e2e8f0', lineHeight: 1.6 }}>
-                    nums = [2,7,11,15]
-                    <br />
-                    target = 9
+                  <Box sx={{ p: 1.5, backgroundColor: '#f8fafc', borderRadius: '6px', color: '#0f172a', border: '1px solid #e2e8f0', lineHeight: 1.6, overflowX: 'auto' }}>
+                    {problem?.examples?.[0]?.input || 'nums = [2,7,11,15], target = 9'}
                   </Box>
                 </Box>
               )}
@@ -579,7 +646,7 @@ export default function ProblemSolver() {
 
                       {/* Run Code View */}
                       {executionResult.type === 'run' && (
-                        <Box sx={{ p: 1.5, backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', lineHeight: 1.6 }}>
+                        <Box sx={{ p: 1.5, backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', lineHeight: 1.6, overflowX: 'auto' }}>
                           <div><span style={{ color: '#64748b' }}>Input:</span> {executionResult.input}</div>
                           <div><span style={{ color: '#64748b' }}>Output:</span> <span style={{ color: '#16a34a', fontWeight: 600 }}>{executionResult.stdout}</span></div>
                           <div><span style={{ color: '#64748b' }}>Expected:</span> {executionResult.expected}</div>
@@ -588,7 +655,7 @@ export default function ProblemSolver() {
 
                       {/* Submit Failed View */}
                       {executionResult.failedCase && (
-                        <Box sx={{ p: 1.5, backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#991b1b', lineHeight: 1.6 }}>
+                        <Box sx={{ p: 1.5, backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#991b1b', lineHeight: 1.6, overflowX: 'auto' }}>
                           <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 600, display: 'block', mb: 0.5, fontFamily: 'sans-serif' }}>
                             Failed Test Case:
                           </Typography>

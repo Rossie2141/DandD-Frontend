@@ -19,17 +19,14 @@ import {
   TableHead,
   TableRow,
   Pagination,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 
 // Icons using Material Symbols
 const SearchIcon = () => (
   <span className="material-symbols-outlined" style={{ color: '#64748b' }}>
     search
-  </span>
-);
-const ShuffleIcon = () => (
-  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-    shuffle
   </span>
 );
 const CheckCircleIcon = () => (
@@ -48,7 +45,7 @@ const ArrowForwardIcon = () => (
   </span>
 );
 
-// Sample dataset
+// Sample fallback dataset
 const MOCK_PROBLEMS = [
   { id: 1, title: 'Two Sum', difficulty: 'Easy', category: 'Arrays', acceptance: '51.2%', solved: true, premium: false },
   { id: 2, title: 'Add Two Numbers', difficulty: 'Medium', category: 'Linked List', acceptance: '42.8%', solved: true, premium: false },
@@ -62,26 +59,6 @@ const MOCK_PROBLEMS = [
   { id: 10, title: 'Container With Most Water', difficulty: 'Medium', category: 'Two Pointers', acceptance: '54.9%', solved: false, premium: false },
   { id: 11, title: 'Trapping Rain Water', difficulty: 'Hard', category: 'Two Pointers', acceptance: '60.4%', solved: false, premium: false },
   { id: 12, title: 'Valid Parentheses', difficulty: 'Easy', category: 'Stack', acceptance: '40.8%', solved: true, premium: false },
-  { id: 13, title: 'Merge Intervals', difficulty: 'Medium', category: 'Arrays', acceptance: '47.0%', solved: true, premium: false },
-  { id: 14, title: 'Group Anagrams', difficulty: 'Medium', category: 'String', acceptance: '67.8%', solved: true, premium: false },
-  { id: 15, title: 'Maximum Subarray', difficulty: 'Medium', category: 'Arrays', acceptance: '50.5%', solved: false, premium: false },
-  { id: 16, title: 'Climbing Stairs', difficulty: 'Easy', category: 'Dynamic Programming', acceptance: '52.3%', solved: true, premium: false },
-  { id: 17, title: 'Best Time to Buy and Sell Stock', difficulty: 'Easy', category: 'Arrays', acceptance: '53.9%', solved: true, premium: false },
-  { id: 18, title: 'Word Search', difficulty: 'Medium', category: 'Backtracking', acceptance: '40.9%', solved: false, premium: false },
-  { id: 19, title: 'Merge k Sorted Lists', difficulty: 'Hard', category: 'Linked List', acceptance: '51.4%', solved: false, premium: true },
-  { id: 20, title: 'Valid Sudoku', difficulty: 'Medium', category: 'Arrays', acceptance: '59.3%', solved: false, premium: false },
-  { id: 21, title: 'Combination Sum', difficulty: 'Medium', category: 'Backtracking', acceptance: '70.2%', solved: false, premium: false },
-  { id: 22, title: 'Permutations', difficulty: 'Medium', category: 'Backtracking', acceptance: '77.7%', solved: true, premium: false },
-  { id: 23, title: 'Rotate Image', difficulty: 'Medium', category: 'Arrays', acceptance: '74.1%', solved: false, premium: false },
-  { id: 24, title: 'Binary Tree Inorder Traversal', difficulty: 'Easy', category: 'Trees', acceptance: '75.2%', solved: true, premium: false },
-  { id: 25, title: 'Validate Binary Search Tree', difficulty: 'Medium', category: 'Trees', acceptance: '32.6%', solved: false, premium: false },
-  { id: 26, title: 'Symmetric Tree', difficulty: 'Easy', category: 'Trees', acceptance: '55.8%', solved: true, premium: false },
-  { id: 27, title: 'Binary Tree Level Order Traversal', difficulty: 'Medium', category: 'Trees', acceptance: '66.4%', solved: true, premium: false },
-  { id: 28, title: 'Maximum Depth of Binary Tree', difficulty: 'Easy', category: 'Trees', acceptance: '74.9%', solved: true, premium: false },
-  { id: 29, title: 'Construct Binary Tree from Preorder and Inorder Traversal', difficulty: 'Medium', category: 'Trees', acceptance: '62.5%', solved: false, premium: false },
-  { id: 30, title: 'Course Schedule', difficulty: 'Medium', category: 'Graphs', acceptance: '46.7%', solved: false, premium: false },
-  { id: 31, title: 'Number of Islands', difficulty: 'Medium', category: 'Graphs', acceptance: '59.1%', solved: true, premium: false },
-  { id: 32, title: 'Clone Graph', difficulty: 'Medium', category: 'Graphs', acceptance: '55.6%', solved: false, premium: true },
 ];
 
 const CATEGORIES = ['All', 'Arrays', 'String', 'Linked List', 'Binary Search', 'Two Pointers', 'Stack', 'Math', 'Sliding Window', 'Dynamic Programming', 'Backtracking', 'Trees', 'Graphs'];
@@ -94,9 +71,46 @@ export default function ProblemsPage() {
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  // Problems loaded from backend (fallback to MOCK_PROBLEMS)
+  const [problems, setProblems] = useState(MOCK_PROBLEMS);
+  const [loadingProblems, setLoadingProblems] = useState(false);
+  const [problemsError, setProblemsError] = useState(null);
+
+  useEffect(() => {
+    setLoadingProblems(true);
+    setProblemsError(null);
+    fetch('http://localhost:8000/api/v1/problems')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server status: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          // Normalizing backend keys to frontend schema safely
+          const normalized = data.map((item) => ({
+            id: item.id,
+            title: item.title,
+            difficulty: item.difficulty || 'Easy',
+            category: item.category || 'General',
+            acceptance: item.acceptance || (item.acceptance_rate ? `${item.acceptance_rate}%` : '50.0%'),
+            solved: Boolean(item.solved ?? item.is_solved ?? false),
+            premium: Boolean(item.premium ?? false),
+          }));
+          setProblems(normalized);
+        }
+      })
+      .catch((err) => {
+        setProblemsError(`Backend offline. Showing local mock data.`);
+      })
+      .finally(() => setLoadingProblems(false));
+  }, []);
+
+  // Compute stats on current problems
+  const totalSolved = useMemo(() => problems.filter((p) => p.solved).length, [problems]);
+
   // Dynamic search and filter logic
   const filteredProblems = useMemo(() => {
-    return MOCK_PROBLEMS.filter((problem) => {
+    return problems.filter((problem) => {
       const matchesSearch = problem.title.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || problem.category === selectedCategory;
       const matchesDifficulty = selectedDifficulty === 'All' || problem.difficulty === selectedDifficulty;
@@ -107,7 +121,7 @@ export default function ProblemsPage() {
 
       return matchesSearch && matchesCategory && matchesDifficulty && matchesStatus;
     });
-  }, [searchQuery, selectedCategory, selectedDifficulty, statusFilter]);
+  }, [problems, searchQuery, selectedCategory, selectedDifficulty, statusFilter]);
 
   useEffect(() => {
     setPage(1);
@@ -140,6 +154,14 @@ export default function ProblemsPage() {
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', py: { xs: 2, sm: 3, md: 4 }, px: { xs: 1.5, sm: 3, md: 4 } }}>
       <Container maxWidth="lg" disableGutters={{ xs: false, sm: false }}>
+        
+        {/* API Error Notification */}
+        {problemsError && (
+          <Alert severity="warning" sx={{ mb: 3, borderRadius: '8px' }}>
+            {problemsError}
+          </Alert>
+        )}
+
         {/* Title & Quick Stats Section */}
         <Box
           sx={{
@@ -179,7 +201,7 @@ export default function ProblemsPage() {
                 Solved
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 700, color: '#10b981', lineHeight: 1.2 }}>
-                5 / 12
+                {totalSolved} / {problems.length}
               </Typography>
             </Box>
             <Box sx={{ height: '28px', width: '1px', backgroundColor: '#e2e8f0', mx: { xs: 1, md: 2 } }} />
@@ -188,7 +210,7 @@ export default function ProblemsPage() {
                 Acceptance
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
-                62.5%
+                {problems.length > 0 ? `${((totalSolved / problems.length) * 100).toFixed(1)}%` : '0%'}
               </Typography>
             </Box>
           </Paper>
@@ -262,10 +284,6 @@ export default function ProblemsPage() {
                 color: '#0f172a',
                 fontSize: '0.875rem',
               },
-              '& .MuiInputBase-input::placeholder': {
-                color: '#94a3b8',
-                opacity: 1,
-              },
               '& .MuiOutlinedInput-root': {
                 backgroundColor: '#f8fafc',
                 borderRadius: '8px',
@@ -276,9 +294,8 @@ export default function ProblemsPage() {
             }}
           />
 
-          {/* Dropdowns Container for Tablet / Mobile layout */}
+          {/* Dropdowns Container */}
           <Box sx={{ display: 'flex', width: { xs: '100%', md: 'auto' }, gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-            {/* Difficulty Dropdown */}
             <FormControl size="small" sx={{ minWidth: { sm: 150 }, width: '100%' }}>
               <Select
                 value={selectedDifficulty}
@@ -290,19 +307,15 @@ export default function ProblemsPage() {
                   backgroundColor: '#f8fafc',
                   borderRadius: '8px',
                   '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#cbd5e1' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#0f172a' },
-                  '& .MuiSelect-icon': { color: '#0f172a' },
                 }}
               >
-                <MenuItem value="All" sx={{ color: '#0f172a' }}>All Difficulties</MenuItem>
-                <MenuItem value="Easy" sx={{ color: '#0f172a' }}>Easy</MenuItem>
-                <MenuItem value="Medium" sx={{ color: '#0f172a' }}>Medium</MenuItem>
-                <MenuItem value="Hard" sx={{ color: '#0f172a' }}>Hard</MenuItem>
+                <MenuItem value="All">All Difficulties</MenuItem>
+                <MenuItem value="Easy">Easy</MenuItem>
+                <MenuItem value="Medium">Medium</MenuItem>
+                <MenuItem value="Hard">Hard</MenuItem>
               </Select>
             </FormControl>
 
-            {/* Status Dropdown */}
             <FormControl size="small" sx={{ minWidth: { sm: 140 }, width: '100%' }}>
               <Select
                 value={statusFilter}
@@ -314,43 +327,14 @@ export default function ProblemsPage() {
                   backgroundColor: '#f8fafc',
                   borderRadius: '8px',
                   '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#cbd5e1' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#0f172a' },
-                  '& .MuiSelect-icon': { color: '#0f172a' },
                 }}
               >
-                <MenuItem value="All" sx={{ color: '#0f172a' }}>All Statuses</MenuItem>
-                <MenuItem value="Solved" sx={{ color: '#0f172a' }}>Solved</MenuItem>
-                <MenuItem value="Unsolved" sx={{ color: '#0f172a' }}>Unsolved</MenuItem>
+                <MenuItem value="All">All Statuses</MenuItem>
+                <MenuItem value="Solved">Solved</MenuItem>
+                <MenuItem value="Unsolved">Unsolved</MenuItem>
               </Select>
             </FormControl>
           </Box>
-
-          {/* Random Pick Button */}
-          {/* <Button
-            variant="outlined"
-            startIcon={<ShuffleIcon />}
-            onClick={() => {
-              const randomId = Math.floor(Math.random() * MOCK_PROBLEMS.length) + 1;
-              alert(`Redirecting to Problem #${randomId}`);
-            }}
-            sx={{
-              borderColor: '#e2e8f0',
-              color: '#0f172a',
-              textTransform: 'none',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-              borderRadius: '8px',
-              height: '40px',
-              width: { xs: '100%', md: 'auto' },
-              '&:hover': {
-                borderColor: '#0f172a',
-                backgroundColor: '#f1f5f9',
-              },
-            }}
-          >
-            Pick Random
-          </Button> */}
         </Paper>
 
         {/* Responsive Table Container */}
@@ -388,28 +372,25 @@ export default function ProblemsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedProblems.length > 0 ? (
+              {loadingProblems ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                    <CircularProgress size={32} />
+                  </TableCell>
+                </TableRow>
+              ) : paginatedProblems.length > 0 ? (
                 paginatedProblems.map((problem) => (
-                  <TableRow
-                    key={problem.id}
-                    hover
-                    sx={{
-                      '&:last-child td, &:last-child th': { border: 0 },
-                      transition: 'background-color 0.2s',
-                    }}
-                  >
-                    {/* Status Icon */}
+                  <TableRow key={problem.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                     <TableCell sx={{ py: 2, px: { xs: 1.5, sm: 2 } }}>
                       {problem.solved ? <CheckCircleIcon /> : <UncheckedIcon />}
                     </TableCell>
 
-                    {/* Problem Title & Responsive Metadata */}
                     <TableCell sx={{ py: 2, px: { xs: 1.5, sm: 2 } }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography
                             component={Link}
-                            to={`/problems/${problem.id}`}
+                            to={`/solver?problemId=${problem.id}`}
                             variant="body2"
                             sx={{
                               fontWeight: 600,
@@ -436,38 +417,29 @@ export default function ProblemsPage() {
                           )}
                         </Box>
 
-                        {/* Inline metadata visible ONLY on Mobile/Small screens */}
                         <Typography
                           variant="caption"
-                          sx={{
-                            color: '#64748b',
-                            display: { xs: 'block', md: 'none' },
-                            fontSize: '0.75rem',
-                          }}
+                          sx={{ color: '#64748b', display: { xs: 'block', md: 'none' }, fontSize: '0.75rem' }}
                         >
                           {problem.category} • {problem.acceptance}
                         </Typography>
                       </Box>
                     </TableCell>
 
-                    {/* Category (Hidden on mobile) */}
                     <TableCell sx={{ py: 2, color: '#64748b', fontSize: '0.875rem', display: { xs: 'none', md: 'table-cell' } }}>
                       {problem.category}
                     </TableCell>
 
-                    {/* Difficulty Badge */}
                     <TableCell sx={{ py: 2, px: { xs: 1, sm: 2 } }}>{getDifficultyChip(problem.difficulty)}</TableCell>
 
-                    {/* Acceptance (Hidden on mobile) */}
                     <TableCell sx={{ py: 2, color: '#64748b', fontSize: '0.875rem', display: { xs: 'none', sm: 'table-cell' } }}>
                       {problem.acceptance}
                     </TableCell>
 
-                    {/* Action Button */}
                     <TableCell align="right" sx={{ py: 2, px: { xs: 1.5, sm: 2 } }}>
                       <Button
                         component={Link}
-                        to={`/problems/${problem.id}`}
+                        to={`/solver?problemId=${problem.id}`}
                         variant="contained"
                         size="small"
                         sx={{
@@ -479,13 +451,9 @@ export default function ProblemsPage() {
                           minWidth: { xs: '36px', sm: '80px' },
                           px: { xs: 1, sm: 2 },
                           boxShadow: 'none',
-                          '&:hover': {
-                            backgroundColor: '#1e293b',
-                            boxShadow: 'none',
-                          },
+                          '&:hover': { backgroundColor: '#1e293b', boxShadow: 'none' },
                         }}
                       >
-                        {/* Text hidden on tiny screens to save space */}
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, mr: 0.5 }}>
                           Solve
                         </Box>
