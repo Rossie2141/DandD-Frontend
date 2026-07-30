@@ -26,6 +26,7 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 const navItems = [
+  { label: 'Dashboard', path: '/dashboard' },
   { label: 'Problems', path: '/problems' },
   { label: 'Explore', path: '/explore' },
   { label: 'Contests', path: '/contests' },

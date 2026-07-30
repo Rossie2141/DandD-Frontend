@@ -17,6 +17,8 @@ const Login = lazy(() => import('./features/auth/Login'));
 const SignUpForm = lazy(() => import('./features/auth/Signup'));
 const Home = lazy(() => import('./pages/Home'));
 const Problems = lazy(() => import('./pages/ProblemPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ProblemSolver=lazy(()=>import('./pages/ProblemSolver'));
 
 const ProtectedRoute = () => {
   // Check common keys where tokens or user sessions are stored
@@ -79,10 +81,26 @@ const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           {
+            path: 'dashboard',
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <Dashboard />
+              </Suspense>
+            ),
+          },
+          {
             path: 'problems',
             element: (
               <Suspense fallback={<LoadingFallback />}>
                 <Problems />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'solver',
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <ProblemSolver />
               </Suspense>
             ),
           },
