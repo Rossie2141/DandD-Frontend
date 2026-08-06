@@ -400,7 +400,7 @@ export default function ProblemsPage() {
                               '&:hover': { color: '#2563eb', textDecoration: 'underline' },
                             }}
                           >
-                            {problem.id}. {problem.title}
+                            {problem.title}
                           </Typography>
                           {problem.premium && (
                             <Chip
