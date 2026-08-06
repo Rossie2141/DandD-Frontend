@@ -19,7 +19,7 @@ const Home = lazy(() => import('./pages/Home'));
 const Problems = lazy(() => import('./pages/ProblemPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ProblemSolver=lazy(()=>import('./pages/ProblemSolver'));
-
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const ProtectedRoute = () => {
   // Check common keys where tokens or user sessions are stored
   const token = 
@@ -101,6 +101,14 @@ const router = createBrowserRouter([
             element: (
               <Suspense fallback={<LoadingFallback />}>
                 <ProblemSolver />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'admin/new-problem',
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <AdminDashboard />
               </Suspense>
             ),
           },

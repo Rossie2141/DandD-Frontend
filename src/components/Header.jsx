@@ -24,6 +24,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
+import AddBoxOutlinedIcon from '@mui/icons-material/AddBoxOutlined';
 
 const navItems = [
   { label: 'Dashboard', path: '/dashboard' },
@@ -291,6 +292,12 @@ export default function Header() {
                   },
                 }}
               >
+                <MenuItem onClick={() => navigate('/admin/new-problem')}>
+                  <ListItemIcon sx={{ minWidth: 'auto !important' }}>
+                    <AddBoxOutlinedIcon fontSize="small" sx={{ color: '#64748b' }} />
+                  </ListItemIcon>
+                  Add Problem
+                </MenuItem>
                 <MenuItem onClick={() => navigate('/home')}>
                   <ListItemIcon sx={{ minWidth: 'auto !important' }}>
                     <DashboardOutlinedIcon fontSize="small" sx={{ color: '#64748b' }} />

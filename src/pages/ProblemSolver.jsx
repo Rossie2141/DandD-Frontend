@@ -288,7 +288,7 @@ export default function ProblemSolver() {
         <Stack direction="row" spacing={2} alignItems="center">
           <Button
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/problems')}
             sx={{
               color: '#64748b',
               textTransform: 'none',
@@ -297,7 +297,7 @@ export default function ProblemSolver() {
               '&:hover': { color: '#0f172a', backgroundColor: 'rgba(0,0,0,0.04)' },
             }}
           >
-            Dashboard
+            Back to Problems
           </Button>
           
           <Divider orientation="vertical" flexItem sx={{ my: 1.5, borderColor: '#e2e8f0' }} />
@@ -311,7 +311,7 @@ export default function ProblemSolver() {
           ) : (
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#0f172a', fontSize: '1rem' }}>
-                {problem?.id}. {problem?.title}
+                 {problem?.title}
               </Typography>
               <Chip
                 label={problem?.difficulty || '—'}
