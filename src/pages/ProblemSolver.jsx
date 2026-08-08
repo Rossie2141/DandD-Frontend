@@ -227,7 +227,22 @@ export default function ProblemSolver() {
     })) || [];
 
     try {
-      const data = await runExecution(testcases);
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`http://localhost:8000/api/v1/problems/${problem?.id || 1}/submit`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({
+          language,
+          code,
+          testcases: testcases
+        })
+      });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const data = await res.json();
+      
       const newStatus = data.status || 'Accepted';
 
       setExecutionResponse({

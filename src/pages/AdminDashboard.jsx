@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -77,6 +77,23 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user.email === 'admin@example.com') {
+          setIsAdmin(true);
+        }
+      } catch (e) {
+        console.error("Failed to parse user data");
+      }
+    }
+    setIsCheckingAuth(false);
+  }, []);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -151,6 +168,29 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   };
+
+  if (isCheckingAuth) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+        <Paper elevation={0} sx={{ p: 5, borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center', maxWidth: 400 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a', mb: 2 }}>
+            Access Denied
+          </Typography>
+          <Typography variant="body1" sx={{ color: '#64748b' }}>
+            You do not have permission to view the Admin Dashboard.
+          </Typography>
+        </Paper>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', py: { xs: 3, md: 5 }, px: { xs: 2, md: 4 } }}>

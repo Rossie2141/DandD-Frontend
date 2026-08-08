@@ -298,7 +298,7 @@ export default function Header() {
                   </ListItemIcon>
                   Add Problem
                 </MenuItem>
-                <MenuItem onClick={() => navigate('/home')}>
+                <MenuItem onClick={() => navigate('/dashboard')}>
                   <ListItemIcon sx={{ minWidth: 'auto !important' }}>
                     <DashboardOutlinedIcon fontSize="small" sx={{ color: '#64748b' }} />
                   </ListItemIcon>
